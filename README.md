@@ -1,7 +1,7 @@
-# Go Project
+# Patreon CSV parser
 
 ## Overview
-This is a Go project that serves as a template for developing Go applications within a containerized environment.
+This is a Go project that can take an exported patreon CSV file and parse it into sepperate tier files. It automatically filters out non-paying patreons or those that have expires.
 
 ## Development Environment
 This project uses a development container to provide a consistent development environment. The container is configured using the files located in the `.devcontainer` directory.
