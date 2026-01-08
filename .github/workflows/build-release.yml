@@ -37,7 +37,7 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/}"
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "PREV_TAG=$PREV_TAG" >> $GITHUB_OUTPUT
+          echo "PREV_TAG=$PREV_TAG" >> $GITHUB_ENV
 
       - name: Test
         run: go test -v ./...
