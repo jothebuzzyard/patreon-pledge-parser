@@ -44,19 +44,32 @@ type Patron struct {
 }
 
 func main() {
-	// Check if pledges.csv exists, prompt if not
-	csvPath := "pledges.csv"
+	// Get the directory of the running executable
+	baseDir, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error getting current working directory: %v\n", err)
+		fmt.Print("Press Enter to exit...")
+		fmt.Scanln()
+		return
+	}
+
+	// Use paths relative to the current working directory
+	csvPath := filepath.Join(baseDir, "pledges.csv")
+	outputDir := filepath.Join(baseDir, "output")
+
+	fmt.Print("Looking for a file named 'pledges.csv' in the current directory...\n")
 	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
-		fmt.Print("File 'pledges.csv' not found. Please enter the path to your CSV file: ")
+		fmt.Print("File 'pledges.csv' not found. Please enter the path to your CSV file (with .csv at the end): ")
 		fmt.Scanln(&csvPath)
 		if _, err := os.Stat(csvPath); os.IsNotExist(err) {
 			fmt.Printf("File '%s' not found. Exiting.\n", csvPath)
+			fmt.Print("Press Enter to exit...")
+			fmt.Scanln()
 			return
 		}
 	}
 
 	// Check if output directory exists, prompt to delete if so
-	outputDir := "output"
 	if stat, err := os.Stat(outputDir); err == nil && stat.IsDir() {
 		var response string
 		fmt.Printf("Output directory '%s' already exists. Delete it and continue? (y/N): ", outputDir)
@@ -233,5 +246,8 @@ func main() {
 	fmt.Printf("Skipped due to unpaid status: %d\n", unpaidStatusCount)
 	fmt.Println("-------------------")
 
-	fmt.Println("Processing complete!")
+	fmt.Println("Processing complete! Your files are in the 'output' directory.")
+
+	fmt.Print("Press Enter to exit...")
+	fmt.Scanln()
 }
