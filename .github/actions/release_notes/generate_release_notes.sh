@@ -3,7 +3,7 @@ set -e
 
 OLDER_TAG="$1"
 LATEST_TAG="$2"
-OUTFILE="release_note.txt"
+OUTFILE="release_notes.txt"
 
 COMMITS=$(git log --format='%s' "${OLDER_TAG}..${LATEST_TAG}")
 
