@@ -50,7 +50,7 @@ jobs:
         id: release_notes
         uses: ./.github/actions/release_notes
         with:
-          older_tag: ${{ steps.get_version.outputs.prev_tag }}
+          older_tag: ${{ env.PREV_TAG }}
           latest_tag: ${{ env.VERSION }}
 
       - name: Upload Release Asset
