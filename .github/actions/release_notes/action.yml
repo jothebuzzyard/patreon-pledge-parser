@@ -1,0 +1,119 @@
+name: Generate Release Notes
+
+description: |
+  Generates grouped release notes from conventional commits between two git tags.
+
+inputs:
+  older_tag:
+    description: 'Older git tag (exclusive)'
+    required: true
+  latest_tag:
+    description: 'Latest git tag (inclusive)'
+    required: true
+
+outputs:
+  release_notes_file:
+    description: 'Path to the generated release notes file'
+    value: ${{ steps.release_notes.outputs.release_notes_file }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate release notes
+      id: release_notes
+      shell: bash
+      run: |
+        set -e
+
+        OLDER_TAG="${{ inputs.older_tag }}"
+        LATEST_TAG="${{ inputs.latest_tag }}"
+        OUTFILE="release_note.txt"
+
+        # Get commit messages between tags (subject + body)
+        COMMITS=$(git log --pretty=format:'%s%n%b%n==END==' "${OLDER_TAG}..${LATEST_TAG}")
+
+        # Prepare groups
+        declare -A GROUPS
+        GROUPS[feat]=""
+        GROUPS[fix]=""
+        GROUPS[chore]=""
+        GROUPS[docs]=""
+        GROUPS[refactor]=""
+        GROUPS[test]=""
+        GROUPS[perf]=""
+        GROUPS[style]=""
+        GROUPS[ci]=""
+        GROUPS[build]=""
+        GROUPS[revert]=""
+        GROUPS[breaking]=""
+        GROUPS[other]=""
+
+        # Helper: lowercase
+        tolower() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
+
+        # Parse each commit
+        IFS=$'\n'
+        buf=""
+        for line in $COMMITS; do
+          if [[ "$line" == "==END==" ]]; then
+            # Process buffered commit
+            commit="$buf"
+            buf=""
+            # Extract subject (first line)
+            subject="${commit%%$'\n'*}"
+            rest="${commit#*$'\n'}"
+            body="${rest//$'\n'/ }"
+
+            # Regex for type, optional scope, optional !, colon, space, then desc
+            # Example: feat(parser)!: description
+            if [[ "$subject" =~ ^([a-zA-Z]+)(\([^)]+\))?(!)?:\ (.+)$ ]]; then
+              type=$(tolower "${BASH_REMATCH[1]}")
+              scope="${BASH_REMATCH[2]}"
+              breaking="${BASH_REMATCH[3]}"
+              desc="${BASH_REMATCH[4]}"
+              # Check for breaking change in header
+              if [[ -n "$breaking" ]]; then
+                GROUPS[breaking]+="- ${type}${scope}${breaking}: $desc"$'\n'
+              fi
+              # Group by type
+              if [[ -v GROUPS[$type] ]]; then
+                GROUPS[$type]+="- ${type}${scope}${breaking}: $desc"$'\n'
+              else
+                GROUPS[other]+="- $subject"$'\n'
+              fi
+            else
+              # Not a conventional commit, group as other
+              GROUPS[other]+="- $subject"$'\n'
+            fi
+
+            # Check for BREAKING CHANGE in body/footers
+            if [[ "$commit" =~ (BREAKING[\ -]CHANGE:?\ ?)(.*) ]]; then
+              breaking_desc="${BASH_REMATCH[2]}"
+              GROUPS[breaking]+="- BREAKING CHANGE: $(echo "$breaking_desc" | xargs)"$'\n'
+            fi
+          else
+            buf+="$line"$'\n'
+          fi
+        done
+
+        # Write to file
+        {
+          [[ -n "${GROUPS[breaking]}" ]] && echo -e "### Breaking Changes\n${GROUPS[breaking]}"
+          [[ -n "${GROUPS[feat]}" ]] && echo -e "### Features\n${GROUPS[feat]}"
+          [[ -n "${GROUPS[fix]}" ]] && echo -e "### Fixes\n${GROUPS[fix]}"
+          [[ -n "${GROUPS[chore]}" ]] && echo -e "### Chores\n${GROUPS[chore]}"
+          [[ -n "${GROUPS[docs]}" ]] && echo -e "### Documentation\n${GROUPS[docs]}"
+          [[ -n "${GROUPS[refactor]}" ]] && echo -e "### Refactoring\n${GROUPS[refactor]}"
+          [[ -n "${GROUPS[test]}" ]] && echo -e "### Tests\n${GROUPS[test]}"
+          [[ -n "${GROUPS[perf]}" ]] && echo -e "### Performance\n${GROUPS[perf]}"
+          [[ -n "${GROUPS[style]}" ]] && echo -e "### Style\n${GROUPS[style]}"
+          [[ -n "${GROUPS[ci]}" ]] && echo -e "### CI\n${GROUPS[ci]}"
+          [[ -n "${GROUPS[build]}" ]] && echo -e "### Build\n${GROUPS[build]}"
+          [[ -n "${GROUPS[revert]}" ]] && echo -e "### Reverts\n${GROUPS[revert]}"
+          [[ -n "${GROUPS[other]}" ]] && echo -e "### Other\n${GROUPS[other]}"
+        } > "$OUTFILE"
+
+        echo "release_notes_file=$OUTFILE" >> "$GITHUB_OUTPUT"
