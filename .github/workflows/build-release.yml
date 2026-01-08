@@ -43,9 +43,22 @@ jobs:
         run: |
           GOOS=windows GOARCH=amd64 go build -o patreon-pledge-parser-${VERSION}.exe ./src/main.go
 
+      - name: Generate release notes from commits
+        id: release_notes
+        run: |
+          # Get commits since last tag, format as Conventional Commits
+          git fetch --tags
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            git log "$PREV_TAG"..HEAD --pretty=format:"- %s" > release_notes.txt
+          else
+            git log --pretty=format:"- %s" > release_notes.txt
+          fi
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
           files: patreon-pledge-parser-${{ env.VERSION }}.exe
+          body_path: release_notes.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
