@@ -18,7 +18,8 @@ This exporter can be customized using a `settings.conf` file placed in the same 
 
 1. Open Notepad.
 2. Paste the example configuration below.
-3. Save the file as `settings.conf` in the same folder as the exporter executable.
+3. Save the file as `settings.conf` in the same folder as the exporter .exe file. **Make sure you set file type to "All files"**, and that you are **NOT** saving it as `settings.conf.txt`
+4. The exporter will tell you at the top if it has found the settings file or not. If its not finding the file make sure it is named correctly, is a conf file not a txt file, and is in the same folder. 
 
 #### Settings Reference
 
