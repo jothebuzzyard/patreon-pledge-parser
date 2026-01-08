@@ -11,11 +11,6 @@ inputs:
     description: 'Latest git tag (inclusive)'
     required: true
 
-outputs:
-  release_notes_file:
-    description: 'Path to the generated release notes file'
-    value: ${{ steps.release_notes.outputs.release_notes_file }}
-
 runs:
   using: "composite"
   steps:
@@ -23,94 +18,4 @@ runs:
       id: release_notes
       shell: bash
       run: |
-        set -e
-
-        OLDER_TAG="${{ inputs.older_tag }}"
-        LATEST_TAG="${{ inputs.latest_tag }}"
-        OUTFILE="release_note.txt"
-
-        # Get commit messages between tags (subject + body)
-        COMMITS=$(git log --pretty=format:'%s%n%b%n==END==' "${OLDER_TAG}..${LATEST_TAG}")
-
-        # Prepare groups
-        declare -A COMMIT_GROUPS
-        COMMIT_GROUPS[feat]=""
-        COMMIT_GROUPS[fix]=""
-        COMMIT_GROUPS[chore]=""
-        COMMIT_GROUPS[docs]=""
-        COMMIT_GROUPS[refactor]=""
-        COMMIT_GROUPS[test]=""
-        COMMIT_GROUPS[perf]=""
-        COMMIT_GROUPS[style]=""
-        COMMIT_GROUPS[ci]=""
-        COMMIT_GROUPS[build]=""
-        COMMIT_GROUPS[revert]=""
-        COMMIT_GROUPS[breaking]=""
-        COMMIT_GROUPS[other]=""
-
-        # Helper: lowercase
-        tolower() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
-
-        # Parse each commit
-        IFS=$'\n'
-        buf=""
-        for line in $COMMITS; do
-          if [[ "$line" == "==END==" ]]; then
-            # Process buffered commit
-            commit="$buf"
-            buf=""
-            # Extract subject (first line)
-            subject="${commit%%$'\n'*}"
-            rest="${commit#*$'\n'}"
-            body="${rest//$'\n'/ }"
-
-            # Regex for type, optional scope, optional !, colon, space, then desc
-            # Example: feat(parser)!: description
-            if [[ "$subject" =~ ^([a-zA-Z]+)(\([^)]+\))?(!)?:\ (.+)$ ]]; then
-              type=$(tolower "${BASH_REMATCH[1]}")
-              scope="${BASH_REMATCH[2]}"
-              breaking="${BASH_REMATCH[3]}"
-              desc="${BASH_REMATCH[4]}"
-              # Check for breaking change in header
-              if [[ -n "$breaking" ]]; then
-                COMMIT_GROUPS[breaking]+="- ${type}${scope}${breaking}: $desc"$'\n'
-              fi
-              # Group by type
-              if [[ -v COMMIT_GROUPS[$type] ]]; then
-                COMMIT_GROUPS[$type]+="- ${type}${scope}${breaking}: $desc"$'\n'
-              else
-                COMMIT_GROUPS[other]+="- $subject"$'\n'
-              fi
-            else
-              # Not a conventional commit, group as other
-              COMMIT_GROUPS[other]+="- $subject"$'\n'
-            fi
-
-            # Check for BREAKING CHANGE in body/footers
-            if [[ "$commit" =~ (BREAKING[\ -]CHANGE:?\ ?)(.*) ]]; then
-              breaking_desc="${BASH_REMATCH[2]}"
-              COMMIT_GROUPS[breaking]+="- BREAKING CHANGE: $(echo "$breaking_desc" | xargs)"$'\n'
-            fi
-          else
-            buf+="$line"$'\n'
-          fi
-        done
-
-        # Write to file
-        {
-          [[ -n "${COMMIT_GROUPS[breaking]}" ]] && echo -e "### Breaking Changes\n${COMMIT_GROUPS[breaking]}"
-          [[ -n "${COMMIT_GROUPS[feat]}" ]] && echo -e "### Features\n${COMMIT_GROUPS[feat]}"
-          [[ -n "${COMMIT_GROUPS[fix]}" ]] && echo -e "### Fixes\n${COMMIT_GROUPS[fix]}"
-          [[ -n "${COMMIT_GROUPS[chore]}" ]] && echo -e "### Chores\n${COMMIT_GROUPS[chore]}"
-          [[ -n "${COMMIT_GROUPS[docs]}" ]] && echo -e "### Documentation\n${COMMIT_GROUPS[docs]}"
-          [[ -n "${COMMIT_GROUPS[refactor]}" ]] && echo -e "### Refactoring\n${COMMIT_GROUPS[refactor]}"
-          [[ -n "${COMMIT_GROUPS[test]}" ]] && echo -e "### Tests\n${COMMIT_GROUPS[test]}"
-          [[ -n "${COMMIT_GROUPS[perf]}" ]] && echo -e "### Performance\n${COMMIT_GROUPS[perf]}"
-          [[ -n "${COMMIT_GROUPS[style]}" ]] && echo -e "### Style\n${COMMIT_GROUPS[style]}"
-          [[ -n "${COMMIT_GROUPS[ci]}" ]] && echo -e "### CI\n${COMMIT_GROUPS[ci]}"
-          [[ -n "${COMMIT_GROUPS[build]}" ]] && echo -e "### Build\n${COMMIT_GROUPS[build]}"
-          [[ -n "${COMMIT_GROUPS[revert]}" ]] && echo -e "### Reverts\n${COMMIT_GROUPS[revert]}"
-          [[ -n "${COMMIT_GROUPS[other]}" ]] && echo -e "### Other\n${COMMIT_GROUPS[other]}"
-        } > "$OUTFILE"
-
-        echo "release_notes_file=$OUTFILE" >> "$GITHUB_OUTPUT"
+        .github/actions/release_notes/generate_release_notes.sh "${{ inputs.older_tag }}" "${{ inputs.latest_tag }}"
