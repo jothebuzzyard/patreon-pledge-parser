@@ -19,9 +19,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
     - name: Generate release notes
       id: release_notes
       shell: bash
@@ -36,20 +33,20 @@ runs:
         COMMITS=$(git log --pretty=format:'%s%n%b%n==END==' "${OLDER_TAG}..${LATEST_TAG}")
 
         # Prepare groups
-        declare -A GROUPS
-        GROUPS[feat]=""
-        GROUPS[fix]=""
-        GROUPS[chore]=""
-        GROUPS[docs]=""
-        GROUPS[refactor]=""
-        GROUPS[test]=""
-        GROUPS[perf]=""
-        GROUPS[style]=""
-        GROUPS[ci]=""
-        GROUPS[build]=""
-        GROUPS[revert]=""
-        GROUPS[breaking]=""
-        GROUPS[other]=""
+        declare -A COMMIT_GROUPS
+        COMMIT_GROUPS[feat]=""
+        COMMIT_GROUPS[fix]=""
+        COMMIT_GROUPS[chore]=""
+        COMMIT_GROUPS[docs]=""
+        COMMIT_GROUPS[refactor]=""
+        COMMIT_GROUPS[test]=""
+        COMMIT_GROUPS[perf]=""
+        COMMIT_GROUPS[style]=""
+        COMMIT_GROUPS[ci]=""
+        COMMIT_GROUPS[build]=""
+        COMMIT_GROUPS[revert]=""
+        COMMIT_GROUPS[breaking]=""
+        COMMIT_GROUPS[other]=""
 
         # Helper: lowercase
         tolower() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
@@ -76,23 +73,23 @@ runs:
               desc="${BASH_REMATCH[4]}"
               # Check for breaking change in header
               if [[ -n "$breaking" ]]; then
-                GROUPS[breaking]+="- ${type}${scope}${breaking}: $desc"$'\n'
+                COMMIT_GROUPS[breaking]+="- ${type}${scope}${breaking}: $desc"$'\n'
               fi
               # Group by type
-              if [[ -v GROUPS[$type] ]]; then
-                GROUPS[$type]+="- ${type}${scope}${breaking}: $desc"$'\n'
+              if [[ -v COMMIT_GROUPS[$type] ]]; then
+                COMMIT_GROUPS[$type]+="- ${type}${scope}${breaking}: $desc"$'\n'
               else
-                GROUPS[other]+="- $subject"$'\n'
+                COMMIT_GROUPS[other]+="- $subject"$'\n'
               fi
             else
               # Not a conventional commit, group as other
-              GROUPS[other]+="- $subject"$'\n'
+              COMMIT_GROUPS[other]+="- $subject"$'\n'
             fi
 
             # Check for BREAKING CHANGE in body/footers
             if [[ "$commit" =~ (BREAKING[\ -]CHANGE:?\ ?)(.*) ]]; then
               breaking_desc="${BASH_REMATCH[2]}"
-              GROUPS[breaking]+="- BREAKING CHANGE: $(echo "$breaking_desc" | xargs)"$'\n'
+              COMMIT_GROUPS[breaking]+="- BREAKING CHANGE: $(echo "$breaking_desc" | xargs)"$'\n'
             fi
           else
             buf+="$line"$'\n'
@@ -101,19 +98,19 @@ runs:
 
         # Write to file
         {
-          [[ -n "${GROUPS[breaking]}" ]] && echo -e "### Breaking Changes\n${GROUPS[breaking]}"
-          [[ -n "${GROUPS[feat]}" ]] && echo -e "### Features\n${GROUPS[feat]}"
-          [[ -n "${GROUPS[fix]}" ]] && echo -e "### Fixes\n${GROUPS[fix]}"
-          [[ -n "${GROUPS[chore]}" ]] && echo -e "### Chores\n${GROUPS[chore]}"
-          [[ -n "${GROUPS[docs]}" ]] && echo -e "### Documentation\n${GROUPS[docs]}"
-          [[ -n "${GROUPS[refactor]}" ]] && echo -e "### Refactoring\n${GROUPS[refactor]}"
-          [[ -n "${GROUPS[test]}" ]] && echo -e "### Tests\n${GROUPS[test]}"
-          [[ -n "${GROUPS[perf]}" ]] && echo -e "### Performance\n${GROUPS[perf]}"
-          [[ -n "${GROUPS[style]}" ]] && echo -e "### Style\n${GROUPS[style]}"
-          [[ -n "${GROUPS[ci]}" ]] && echo -e "### CI\n${GROUPS[ci]}"
-          [[ -n "${GROUPS[build]}" ]] && echo -e "### Build\n${GROUPS[build]}"
-          [[ -n "${GROUPS[revert]}" ]] && echo -e "### Reverts\n${GROUPS[revert]}"
-          [[ -n "${GROUPS[other]}" ]] && echo -e "### Other\n${GROUPS[other]}"
+          [[ -n "${COMMIT_GROUPS[breaking]}" ]] && echo -e "### Breaking Changes\n${COMMIT_GROUPS[breaking]}"
+          [[ -n "${COMMIT_GROUPS[feat]}" ]] && echo -e "### Features\n${COMMIT_GROUPS[feat]}"
+          [[ -n "${COMMIT_GROUPS[fix]}" ]] && echo -e "### Fixes\n${COMMIT_GROUPS[fix]}"
+          [[ -n "${COMMIT_GROUPS[chore]}" ]] && echo -e "### Chores\n${COMMIT_GROUPS[chore]}"
+          [[ -n "${COMMIT_GROUPS[docs]}" ]] && echo -e "### Documentation\n${COMMIT_GROUPS[docs]}"
+          [[ -n "${COMMIT_GROUPS[refactor]}" ]] && echo -e "### Refactoring\n${COMMIT_GROUPS[refactor]}"
+          [[ -n "${COMMIT_GROUPS[test]}" ]] && echo -e "### Tests\n${COMMIT_GROUPS[test]}"
+          [[ -n "${COMMIT_GROUPS[perf]}" ]] && echo -e "### Performance\n${COMMIT_GROUPS[perf]}"
+          [[ -n "${COMMIT_GROUPS[style]}" ]] && echo -e "### Style\n${COMMIT_GROUPS[style]}"
+          [[ -n "${COMMIT_GROUPS[ci]}" ]] && echo -e "### CI\n${COMMIT_GROUPS[ci]}"
+          [[ -n "${COMMIT_GROUPS[build]}" ]] && echo -e "### Build\n${COMMIT_GROUPS[build]}"
+          [[ -n "${COMMIT_GROUPS[revert]}" ]] && echo -e "### Reverts\n${COMMIT_GROUPS[revert]}"
+          [[ -n "${COMMIT_GROUPS[other]}" ]] && echo -e "### Other\n${COMMIT_GROUPS[other]}"
         } > "$OUTFILE"
 
         echo "release_notes_file=$OUTFILE" >> "$GITHUB_OUTPUT"
