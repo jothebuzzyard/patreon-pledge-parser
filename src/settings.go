@@ -96,6 +96,7 @@ func LoadSettings(path string) Settings {
 			settings.RandomizeSVGColors = strings.ToLower(val) == "true"
 		case "USER_COLOR_MAP":
 			// Format: name1:#FFF,name2:#000
+			settings.UserColorMap = make(map[string]string)
 			pairs := strings.Split(val, ",")
 			for _, pair := range pairs {
 				kv := strings.SplitN(pair, ":", 2)
@@ -105,5 +106,42 @@ func LoadSettings(path string) Settings {
 			}
 		}
 	}
+
+	if err := settings.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error in settings.conf: %v\n", err)
+		os.Exit(1)
+	}
+
 	return settings
+}
+
+func (s *Settings) Validate() error {
+	if s.Width <= 0 {
+		return fmt.Errorf("SVG_WIDTH must be greater than 0")
+	}
+	if s.Margin < 0 {
+		return fmt.Errorf("SVG_MARGIN_TO_EDGE cannot be negative")
+	}
+	if s.ColGap < 0 {
+		return fmt.Errorf("SVG_COLUMN_GAP cannot be negative")
+	}
+	if s.FontSize <= 0 {
+		return fmt.Errorf("SVG_FONTSIZE must be greater than 0")
+	}
+	if s.LineHeight <= 0 {
+		return fmt.Errorf("SVG_LINEHEIGHT must be greater than 0")
+	}
+	if s.Columns <= 0 {
+		return fmt.Errorf("SVG_COLUMNS must be greater than 0")
+	}
+	if s.OutputDir == "" {
+		return fmt.Errorf("OUTPUT_DIR cannot be empty")
+	}
+	if s.DefaultCSVFile == "" {
+		return fmt.Errorf("DEFAULT_CSV_FILE cannot be empty")
+	}
+	if len(s.ColumnColors) == 0 {
+		return fmt.Errorf("SVG_COLUMN_COLORS must have at least one color")
+	}
+	return nil
 }
