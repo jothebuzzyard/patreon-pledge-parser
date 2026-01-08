@@ -38,6 +38,7 @@ This exporter can be customized using a `settings.conf` file placed in the same 
 | SVG_FONTFAMILY         | Font family string               | Font family for SVG text (e.g., `Arial, sans-serif`).                                       |
 | SVG_COLUMN_COLORS      | Comma-separated color hex values | Colors for each column (e.g., `#3aff22,#c622ff,#a8ff21`).                                   |
 | SVG_RANDOMIZE_COLORS   | `true` or `false`                | Randomize name colors for SVG output.                                                       |
+| USER_COLOR_MAP         | Comma-separated name and color   | Sets a specific name to a specific color (eg Pelle:#FFF,John Doe:#000)                      |
 
 #### Example `settings.conf` (Default Values)
 
@@ -58,6 +59,8 @@ SVG_COLUMNS=3
 SVG_FONTFAMILY=Trebuchet MS, Arial, sans-serif
 SVG_COLUMN_COLORS=#3aff22,#c622ff,#a8ff21
 SVG_RANDOMIZE_COLORS=true
+# Remove hash to use the user map setting
+# USER_COLOR_MAP=XYZ:#FFF,John Doe:#000
 ```
 
 Copy and edit this file as needed to customize the exporter's behavior.

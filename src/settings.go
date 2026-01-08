@@ -23,6 +23,7 @@ type Settings struct {
 	FontFamily         string
 	ColumnColors       []string
 	RandomizeSVGColors bool
+	UserColorMap       map[string]string
 }
 
 // LoadSettings loads settings from settings.conf and returns a Settings object
@@ -43,6 +44,7 @@ func LoadSettings(path string) Settings {
 		FontFamily:         "Trebuchet MS, Arial, sans-serif",
 		ColumnColors:       []string{"#3aff22", "#c622ff", "#a8ff21"},
 		RandomizeSVGColors: true,
+		UserColorMap:       nil,
 	}
 
 	file, err := os.Open(path)
@@ -92,6 +94,15 @@ func LoadSettings(path string) Settings {
 			settings.ColumnColors = strings.Split(val, ",")
 		case "SVG_RANDOMIZE_COLORS":
 			settings.RandomizeSVGColors = strings.ToLower(val) == "true"
+		case "USER_COLOR_MAP":
+			// Format: name1:#FFF,name2:#000
+			pairs := strings.Split(val, ",")
+			for _, pair := range pairs {
+				kv := strings.SplitN(pair, ":", 2)
+				if len(kv) == 2 {
+					settings.UserColorMap[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+				}
+			}
 		}
 	}
 	return settings
