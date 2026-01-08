@@ -16,7 +16,7 @@ func TestGetCSVPath_FileExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create csv: %v", err)
 	}
-	path, err := getCSVPath(tmpDir)
+	path, err := getCSVPath(tmpDir, "pledges.csv")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -135,12 +135,9 @@ func TestWriteTierFiles(t *testing.T) {
 		"Gold":   {{Name: "Alice"}, {Name: "Bob"}},
 		"Silver": {{Name: "Charlie"}},
 	}
-	total, err := writeTierFiles(tmpDir, groups)
+	err := writeTierFiles(tmpDir, groups)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-	if total != 3 {
-		t.Errorf("expected 3 patrons, got %d", total)
 	}
 	// Check files exist and contents
 	goldFile := filepath.Join(tmpDir, "Gold.txt")

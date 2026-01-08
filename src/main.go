@@ -43,8 +43,8 @@ type Patron struct {
 	SubscriptionSource string
 }
 
-func getCSVPath(baseDir string) (string, error) {
-	csvPath := filepath.Join(baseDir, "pledges.csv")
+func getCSVPath(baseDir string, file string) (string, error) {
+	csvPath := filepath.Join(baseDir, file)
 	fmt.Print("Looking for a file named 'pledges.csv' in the current directory...\n")
 	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
 		fmt.Print("File 'pledges.csv' not found. Please enter the path to your CSV file (with .csv at the end): ")
@@ -176,8 +176,7 @@ func groupAndSortByTier(patrons []Patron) map[string][]Patron {
 	return tierGroups
 }
 
-func writeTierFiles(outputDir string, tierGroups map[string][]Patron) (int, error) {
-	totalPaying := 0
+func writeTierFiles(outputDir string, tierGroups map[string][]Patron) error {
 	for tier, patrons := range tierGroups {
 		filename := strings.ReplaceAll(tier, " ", "_")
 		filename = strings.ReplaceAll(filename, "/", "_")
@@ -196,9 +195,8 @@ func writeTierFiles(outputDir string, tierGroups map[string][]Patron) (int, erro
 		}
 		file.Close()
 		fmt.Printf("Created %s with %d patrons\n", filename, len(patrons))
-		totalPaying += len(patrons)
 	}
-	return totalPaying, nil
+	return nil
 }
 
 func main() {
@@ -209,9 +207,12 @@ func main() {
 		fmt.Scanln()
 		return
 	}
-	outputDir := filepath.Join(baseDir, "output")
 
-	csvPath, err := getCSVPath(baseDir)
+	settings := LoadSettings("settings.conf")
+
+	outputDir := filepath.Join(baseDir, settings.OutputDir)
+
+	csvPath, err := getCSVPath(baseDir, settings.DefaultCSVFile)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Print("Press Enter to exit...")
@@ -227,10 +228,14 @@ func main() {
 	records, err := readCSVFile(csvPath)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Print("Press Enter to exit...")
+		fmt.Scanln()
 		return
 	}
 	if len(records) < 2 {
 		fmt.Println("CSV file is empty or has no data rows")
+		fmt.Print("Press Enter to exit...")
+		fmt.Scanln()
 		return
 	}
 
@@ -241,11 +246,37 @@ func main() {
 	err = os.MkdirAll(outputDir, 0755)
 	if err != nil {
 		fmt.Printf("Error creating output directory: %v\n", err)
+		fmt.Print("Press Enter to exit...")
+		fmt.Scanln()
 		return
 	}
 
-	totalPaying, _ := writeTierFiles(outputDir, tierGroups)
+	var allNames []string
+	for _, patrons := range tierGroups {
+		for _, p := range patrons {
+			allNames = append(allNames, p.Name)
+		}
+	}
+	if settings.ExportSVG {
+		if len(allNames) > 0 {
+			svgPath := filepath.Join(outputDir, "all_names.svg")
+			if err := ExportNamesSVG(allNames, svgPath, settings); err != nil {
+				fmt.Printf("Error creating SVG: %v\n", err)
+			} else {
+				fmt.Printf("SVG created at %s\n", svgPath)
+			}
+		}
+	} else {
+		fmt.Println("SVG export disabled in settings.conf; skipping SVG generation.")
+	}
 
+	if settings.ExportTXT {
+		writeTierFiles(outputDir, tierGroups)
+	} else {
+		fmt.Println("TXT export disabled in settings.conf; skipping TXT generation.")
+	}
+
+	var totalPaying = len(allNames)
 	fmt.Println("----- Summary -----")
 	fmt.Printf("Total paying patrons: %d\n", totalPaying)
 	fmt.Printf("Total free tier patrons: %d\n", freeTierCount)
