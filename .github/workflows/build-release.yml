@@ -44,7 +44,7 @@ jobs:
 
       - name: Build Windows executable
         run: |
-          GOOS=windows GOARCH=amd64 go build -o patreon-pledge-parser-${VERSION}.exe ./src/main.go
+          GOOS=windows GOARCH=amd64 go build -o patreon-pledge-parser-${VERSION}.exe ./src/
 
       - name: Generate release notes from commits
         id: release_notes
