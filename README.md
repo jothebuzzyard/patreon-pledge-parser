@@ -1,7 +1,7 @@
-# Patreon CSV parser
+# Patreon CSV txt  / SVG exporter
 
 ## Overview
-This is a Go project that can take an exported patreon CSV file and parse it into sepperate tier files. It automatically filters out non-paying patreons or those that have expires.
+This is a Go project that can take an exported patreon CSV file and parse it into sepperate tier files text files as well as an SVG for use in end credits of videos. It automatically filters out non-paying patreons or those that have expires.
 
 ## For users
 1. Download the latest version from the release space to the right.
