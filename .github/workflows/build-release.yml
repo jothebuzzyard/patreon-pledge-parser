@@ -37,9 +37,6 @@ jobs:
           older_tag: ${{ steps.get_version.outputs.prev_tag }}
           latest_tag: ${{ steps.get_version.outputs.version }}
 
-      - name: Save release notes
-        run: cp release_notes.txt ${{ github.workspace }}/release_notes.txt
-
       - name: Upload release notes artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,6 +64,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
       - name: Test
         run: go test -v ./...
 
