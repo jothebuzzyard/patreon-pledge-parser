@@ -149,7 +149,7 @@ jobs:
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-exe
+          name: linux
           path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}-linux
 
   build-mac:
@@ -186,12 +186,12 @@ jobs:
 
       - name: Build macOS executable
         run: |
-          GOOS=darwin GOARCH=amd64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac ./src/
+          GOOS=darwin GOARCH=arm64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac ./src/
 
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mac-exe
+          name: mac
           path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac
 
   release:
@@ -211,12 +211,12 @@ jobs:
       - name: Download Linux executable
         uses: actions/download-artifact@v4
         with:
-          name: linux-exe
+          name: linux
 
       - name: Download macOS executable
         uses: actions/download-artifact@v4
         with:
-          name: mac-exe
+          name: mac
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
