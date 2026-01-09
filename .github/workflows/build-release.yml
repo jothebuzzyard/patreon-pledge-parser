@@ -68,22 +68,35 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-  build-windows:
-    needs: [test]
+  build:
+    needs: [test, release-notes]
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            goos: windows
+            goarch: amd64
+            ext: .exe
+            artifact: windows-exe
+            out: patreon-pledge-parser-${{ needs.release-notes.outputs.version }}.exe
+          - os: linux
+            goos: linux
+            goarch: amd64
+            ext: -linux
+            artifact: linux
+            out: patreon-pledge-parser-${{ needs.release-notes.outputs.version }}-linux
+          - os: mac
+            goos: darwin
+            goarch: arm64
+            ext: -mac
+            artifact: mac
+            out: patreon-pledge-parser-${{ needs.release-notes.outputs.version }}-mac
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
-
-      - name: Extract version from tag
-        id: get_version
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -100,103 +113,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Build Windows executable
+      - name: Build ${{ matrix.os }} executable
         run: |
-          GOOS=windows GOARCH=amd64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}.exe ./src/
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -trimpath -ldflags="-s -w" -o ${{ matrix.out }} ./src/
 
-      - name: Upload executable artifact
+      - name: Upload ${{ matrix.os }} artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
-          path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}.exe
-
-  build-linux:
-    needs: [test]
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Extract version from tag
-        id: get_version
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Build Linux executable
-        run: |
-          GOOS=linux GOARCH=amd64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}-linux ./src/
-
-      - name: Upload executable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux
-          path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}-linux
-
-  build-mac:
-    needs: [test]
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-
-      - name: Extract version from tag
-        id: get_version
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Build macOS executable
-        run: |
-          GOOS=darwin GOARCH=arm64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac ./src/
-
-      - name: Upload executable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac
-          path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.out }}
 
   release:
     runs-on: ubuntu-latest
-    needs: [release-notes, build-windows, build-linux, build-mac]
+    needs: [release-notes, build]
     steps:
       - name: Download release notes
         uses: actions/download-artifact@v4
@@ -222,9 +151,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            patreon-pledge-parser-${{ needs.build-windows.outputs.version }}.exe
-            patreon-pledge-parser-${{ needs.build-linux.outputs.version }}-linux
-            patreon-pledge-parser-${{ needs.build-mac.outputs.version }}-mac
+            patreon-pledge-parser-${{ needs.release-notes.outputs.version }}.exe
+            patreon-pledge-parser-${{ needs.release-notes.outputs.version }}-linux
+            patreon-pledge-parser-${{ needs.release-notes.outputs.version }}-mac
           body_path: release_notes.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
