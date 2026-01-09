@@ -9,9 +9,11 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  release-notes:
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      prev_tag: ${{ steps.get_version.outputs.prev_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,6 +21,71 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           ref: ${{ github.ref }}
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes from commits
+        id: release_notes
+        uses: ./.github/actions/release_notes
+        with:
+          older_tag: ${{ steps.get_version.outputs.prev_tag }}
+          latest_tag: ${{ steps.get_version.outputs.version }}
+
+      - name: Save release notes
+        run: cp release_notes.txt ${{ github.workspace }}/release_notes.txt
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.txt
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Test
+        run: go test -v ./...
+
+  build-windows:
+    needs: [test]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -35,32 +102,131 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Build Windows executable
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}.exe ./src/
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}.exe
+
+  build-linux:
+    needs: [test]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
       - name: Extract version from tag
         id: get_version
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "PREV_TAG=$PREV_TAG" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Test
-        run: go test -v ./...
-
-      - name: Build Windows executable
-        run: |
-          GOOS=windows GOARCH=amd64 go build -o patreon-pledge-parser-${VERSION}.exe ./src/
-
-      - name: Generate release notes from commits
-        id: release_notes
-        uses: ./.github/actions/release_notes
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          older_tag: ${{ env.PREV_TAG }}
-          latest_tag: ${{ env.VERSION }}
+          go-version: 'stable'
 
-      - name: Upload Release Asset
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build Linux executable
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}-linux ./src/
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-exe
+          path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}-linux
+
+  build-mac:
+    needs: [test]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build macOS executable
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac ./src/
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-exe
+          path: patreon-pledge-parser-${{ steps.get_version.outputs.version }}-mac
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [release-notes, build-windows, build-linux, build-mac]
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
+      - name: Download Windows executable
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+
+      - name: Download Linux executable
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-exe
+
+      - name: Download macOS executable
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-exe
+
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: patreon-pledge-parser-${{ env.VERSION }}.exe
+          files: |
+            patreon-pledge-parser-${{ needs.build-windows.outputs.version }}.exe
+            patreon-pledge-parser-${{ needs.build-linux.outputs.version }}-linux
+            patreon-pledge-parser-${{ needs.build-mac.outputs.version }}-mac
           body_path: release_notes.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
