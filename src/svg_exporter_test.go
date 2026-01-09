@@ -88,7 +88,7 @@ func TestExportNamesSVG_UserColorMap(t *testing.T) {
 		Columns:      1,
 		FontFamily:   "Arial",
 		ColumnColors: []string{"#000"},
-		UserColorMap: map[string]string{"X": "#abc123"},
+		UserColorMap: map[string]string{"x": "#abc123"},
 	}
 	tmpfile, err := os.CreateTemp("", "testsvg-*.svg")
 	if err != nil {
