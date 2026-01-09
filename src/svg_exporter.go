@@ -63,7 +63,7 @@ func ExportNamesSVG(names []string, outputPath string, settings Settings) error 
 		x := margin + colIdx*(colWidth+colGap) + colWidth/2
 		for rowIdx, name := range col {
 			y := margin + fontSize + rowIdx*lineHeight
-			color := getColorForColumn(colIdx, columnColors, settings.RandomizeSVGColors, r, name, settings.UserColorMap)
+			color := getColorForName(colIdx, columnColors, settings.RandomizeSVGColors, r, name, settings.UserColorMap)
 			fmt.Fprintf(f,
 				`<text x="%d" y="%d" font-family="%s" font-size="%d" fill="none" stroke="#000" stroke-width="2" paint-order="stroke" text-anchor="middle">%s</text>`,
 				x, y, fontFamily, fontSize, escapeXML(name))
@@ -77,9 +77,9 @@ func ExportNamesSVG(names []string, outputPath string, settings Settings) error 
 	return nil
 }
 
-func getColorForColumn(colIdx int, columnColors []string, randomize bool, r *rand.Rand, name string, userColorMap map[string]string) string {
+func getColorForName(colIdx int, columnColors []string, randomize bool, r *rand.Rand, name string, userColorMap map[string]string) string {
 	if userColorMap != nil {
-		if color, exists := userColorMap[name]; exists {
+		if color, exists := userColorMap[strings.TrimSpace(strings.ToLower(name))]; exists {
 			return color
 		}
 	}

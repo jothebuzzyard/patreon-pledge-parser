@@ -101,7 +101,7 @@ func LoadSettings(path string) Settings {
 			for _, pair := range pairs {
 				kv := strings.SplitN(pair, ":", 2)
 				if len(kv) == 2 {
-					settings.UserColorMap[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+					settings.UserColorMap[strings.ToLower(strings.TrimSpace(kv[0]))] = strings.TrimSpace(kv[1])
 				}
 			}
 		}

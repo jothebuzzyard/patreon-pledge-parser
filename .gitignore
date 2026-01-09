@@ -33,3 +33,4 @@ go.work.sum
 
 /src/output/
 /src/pledges.csv
+/src/settings.conf
